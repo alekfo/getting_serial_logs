@@ -15,6 +15,10 @@ logging.basicConfig(
         logging.FileHandler('com_port_log.txt', encoding='utf-8')  # вывод в файл
     ]
 )
+def write_all_data(raw_data):
+    hex_string = raw_data.hex()
+    with open('all_data.txt', 'a', encoding='utf-8') as file:
+        file.write(f"Время: {datetime.now()} Получено {len(raw_data)} байт: {hex_string}\n")
 
 def read_hex_dump():
     ser = None
@@ -22,7 +26,17 @@ def read_hex_dump():
     # for port in ports:
     #     print(f"{port.device} - {port.description}")
     try:
-        ser = serial.Serial(PORT, BAUDRATE, timeout=1, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, xonxoff=True)
+        ser = serial.Serial(
+            PORT,
+            BAUDRATE,
+            timeout=1,
+            bytesize=serial.EIGHTBITS,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            xonxoff=False,  # Отключено для RS-422
+            rtscts=False,  # Отключено для RS-422
+            dsrdtr=False  # Отключено для RS-422
+        )
         logging.info(f"Порт {PORT} открыт. Ожидание данных...")
 
         while True:
@@ -30,7 +44,9 @@ def read_hex_dump():
                 raw_data = ser.read(ser.in_waiting)
                 hex_string = raw_data.hex()  # Конвертация bytes -> HEX строка
                 # Выводим в консоль с информацией о количестве байт
-                logging.info(f"Получено {len(raw_data)} байт: {hex_string}")
+                # logging.info(f"Получено hex данных {len(raw_data)} байт: {hex_string}")
+                logging.info(f"Получены сырые данные: {raw_data}")
+                # logging.info(f"Получен список целочисл значений: {list(raw_data)}")
 
     except (serial.SerialException, OSError) as e:
         logging.error(f"Ошибка порта: {e}")
@@ -67,6 +83,7 @@ def read_packets_by_marker_variable(port: str, baudrate: int, marker: List[int],
             # Читаем все доступные данные
             data = ser.read(ser.in_waiting or 1024)
             if data:
+                # write_all_data(data)
                 buffer.extend(data)
                 logging.debug(f"Буфер пополнен, размер {len(buffer)} байт")
 
@@ -129,5 +146,5 @@ def read_packets_by_marker_variable(port: str, baudrate: int, marker: List[int],
 
 
 if __name__ == "__main__":
-    # read_hex_dump()
-    read_packets_by_marker_variable(PORT, BAUDRATE, marker=[0x48, 0x61], prefix_len=14)
+    read_hex_dump()
+    # read_packets_by_marker_variable(PORT, BAUDRATE, marker=[0x58, 0x63], prefix_len=14)
